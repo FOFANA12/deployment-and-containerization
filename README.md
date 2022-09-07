@@ -1,85 +1,299 @@
-# Deploying a Flask API
+# Deploying a Flask API on AWS
 
-This is the project starter repo for the course Server Deployment, Containerization, and Testing.
+This API is part of my training on UDACITY, and allows students to understand the deployment of APIs on the AWS cluster.
 
-In this project you will containerize and deploy a Flask API to a Kubernetes cluster using Docker, AWS EKS, CodePipeline, and CodeBuild.
+The purpose of this application is to provide learners with the skills to containerize and deploy a Flask API to a Kubernetes cluster using Docker, AWS EKS, CodePipeline, and CodeBuild.
 
-The Flask app that will be used for this project consists of a simple API with three endpoints:
+#### The functionalities covered by the API are :
 
-- `GET '/'`: This is a simple health check, which returns the response 'Healthy'. 
-- `POST '/auth'`: This takes a email and password as json arguments and returns a JWT based on a custom secret.
-- `GET '/contents'`: This requires a valid JWT, and returns the un-encrpyted contents of that token. 
+  1. Display health check as text.
+  2. Authentication with email and password.
+  3. Display unencrypted content after authentication.
 
-The app relies on a secret set as the environment variable `JWT_SECRET` to produce a JWT. The built-in Flask server is adequate for local development, but not production, so you will be using the production-ready [Gunicorn](https://gunicorn.org/) server when deploying the app.
+## Getting started
+To work with this project, you must know python precisely the FLASK framework, and Docker.
 
-## Prerequisites
+### Configuration for local development
 
-* Docker Desktop - Installation instructions for all OSes can be found <a href="https://docs.docker.com/install/" target="_blank">here</a>.
-* Git: <a href="https://git-scm.com/downloads" target="_blank">Download and install Git</a> for your system. 
-* Code editor: You can <a href="https://code.visualstudio.com/download" target="_blank">download and install VS code</a> here.
+#### Install depencies
+1. **Python version between 3.7 and 3.9** - Follow instructions to install the latest version of python for your platform in the [python docs](https://docs.python.org/3/using/unix.html#getting-and-installing-the-latest-version-of-python)
+2. **Virtual Environment** - We recommend working within a virtual environment whenever using Python for projects. This keeps your dependencies for each project separate and organized. Instructions for setting up a virual environment for your platform can be found in the [python docs](https://packaging.python.org/guides/installing-using-pip-and-virtual-environments/)
+3. **PIP Dependencies** - Once your virtual environment is setup and running, install the required dependencies with following command:
+
+```bash
+pip install -r requirements.txt
+```
+### Prerequisites
+
+* Docker Desktop - Installation instructions for all OSes can be found [here](https://docs.docker.com/install/?target=_blank).
+* Git: [Download and install Git](https://git-scm.com/downloads/?target=_blank) for your system. 
+* Code editor: You can [download and install VS code](https://code.visualstudio.com/download/?target=_blank) here.
 * AWS Account
-* Python version between 3.7 and 3.9. Check the current version using:
-```bash
-#  Mac/Linux/Windows 
-python --version
-```
-You can download a specific release version from <a href="https://www.python.org/downloads/" target="_blank">here</a>.
+* Command line utilities : AWS CLI, EKSCTL AND KUBECTL
 
-* Python package manager - PIP 19.x or higher. PIP is already installed in Python 3 >=3.4 downloaded from python.org . However, you can upgrade to a specific version, say 20.2.3, using the command:
+### Update configurations
+Before starting the application, you must create an ".env_file" file to put the values ​​of JWT_SECRET and LOG_LEVEL
+
+To run the server, execute:
+
 ```bash
-#  Mac/Linux/Windows Check the current version
-pip --version
-# Mac/Linux
-pip install --upgrade pip==20.2.3
-# Windows
-python -m pip install --upgrade pip==20.2.3
+python main.py
 ```
-* Terminal
-   * Mac/Linux users can use the default terminal.
-   * Windows users can use either the GitBash terminal or WSL. 
-* Command line utilities:
-  * AWS CLI installed and configured using the `aws configure` command. Another important configuration is the region. Do not use the us-east-1 because the cluster creation may fails mostly in us-east-1. Let's change the default region to:
-  ```bash
-  aws configure set region us-east-2  
+Default URL should be http://127.0.0.1:8080/
+
+### Testing
+Tests are not required to run the API. But if you contribute, please run the tests before pushing to GitHub.
+
+## API Reference
+
+### Getting Started
+- Base URL: http://127.0.0.1:8080/
+- Authentication: This the application require authentication to get content.
+
+### Error Handling
+All HTTP errors are handled and returned as JSON objects in the following format:
+
+```bash
+{
+  "error": 404,
+  "message": "The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.",
+  "success": false
+}
+```
+
+#### Endpoints
+
+#### Get health check
+```http
+  GET /
+```
+```http
+  POST /
+```
+- General: returns the response 'Healthy'.
+- Permissions: not require
+- Sample: ```bash curl http://127.0.0.1:8080/ ```
+
+```bash
+{
+  "Healthy" 
+}
+```
+
+#### Authentication
+```http
+  POST /auth
+```
+| Parameter | Type     | Description                       |
+| :-------- | :------- | :-------------------------------- |
+| `email`      | `string` | **Required**. Your email |
+| `password`      | `string` | **Required**. Your password |
+
+- General: returns a JWT token.
+- Permissions: not require
+- Sample: `curl -X POST -H "Content-Type: application/json" -d '{"email": "demo@demo.com", "password": "demo"}' http://127.0.0.1:8080/auth`
+
+```bash
+{
+  "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2NjM2Mzk4NDMsIm5iZiI6MTY2MjQzMDI0MywiZW1haWwiOiJkZW1vQGRlbW8uY29tIn0.nf8iwPUVLT9LSQHEk..........."
+}
+```
+
+#### Get content
+```http
+  GET /contents
+```
+| Parameter | Type     | Description                       |
+| :-------- | :------- | :-------------------------------- |
+| `token`      | `string` | **Required**. Your authentication token |
+
+- General: returns the un-encrpyted contents of that token.
+- Permissions: requires a valid token
+- Sample: `curl -H "Authorization: Bearer {token}" http://127.0.0.1:8080/contents `
+```bash
+{
+  "email": "demo@demo.com", 
+  "exp": 1663639843, 
+  "nbf": 1662430243
+}
+```
+
+## Deployment on AWS
+
+### Container test
+
+Before deployment, you need to build the image and run the container to make sure everything works fine locally.
+
+You need to start creating the application image.
+Navigate to the project folder where the Dockerfile is located and run the following command:
+
+```bash
+  docker build --tag name:tag .
+```
+After creating the image, you need to launch the container and test
+
+```bash
+  docker run -d -p 5000:8080 --name myFlaskContainer image-name
+```
+`image-name` is name of your image.
+
+If your container is working and responding to requests, then you can continue with the deployment. If not, this must be corrected before continuing.
+
+### Deployment
+
+### Create a cluster EKS and IAM role
+
+First, create a cluster with eksctl command line tool
+```bash
+  eksctl create cluster --name simple-jwt-api
+```
+The command will create a cluster with the name "simple-jwt-api" and a nodegroup containing two "m5.large" nodes, wait for status to be CREATE_COMPLETE
+
+Navigate in the project to find the "trust.json" file. replace <ACCOUNT_ID> with your account ID.
+
+Use the following command to get your account ID:
+```bash
+  aws sts get-caller-identity --query Account --output text
+```
+Save the file and type the following command to create the role:
+```bash
+  aws iam create-role --role-name UdacityFlaskDeployCBKubectlRole --assume-role-policy-document file://trust.json --output text --query 'Role.Arn'
+```
+It must be in the folder that the file. This IAM role allows CodeBuild to access the EKS cluster.
+
+Now you need to create the permission to allow certain actions.
+
+Navigate to the project folder to find the "iam-role-policy.json" file then run the following command:
+```bash
+  aws iam put-role-policy --role-name UdacityFlaskDeployCBKubectlRole --policy-name eks-describe --policy-document file://iam-role-policy.json
+```
+### Allow the new role to access the cluster
+You must add the role to "aws-auth ConfigMap" for it to access the cluster.
+
+Get the current config map and save it to a file with the following command:
+
+For Mac/Linux: the file will be created in the path "/System/Volumes/Data/private/tmp/aws-auth-patch.yml".
+
+```bash
+  kubectl get -n kube-system configmap/aws-auth -o yaml > /tmp/aws-auth-patch.yml
+```
+
+For Windows: the file will be created in the current working directory
+```bash
+  kubectl get -n kube-system configmap/aws-auth -o yaml > aws-auth-patch.yml
+```
+Open the aws-auth-patch.yml file using any editor, such as the VS Code editor
+
+* Mac/Linux
+```bash
+  code /System/Volumes/Data/private/tmp/aws-auth-patch.yml
+```
+* Windows
+```bash
+  code aws-auth-patch.yml
+```
+Add the following group in the data → mapRoles section of this file.
+
+```bash
+    - groups:
+      - system:masters
+      rolearn: arn:aws:iam::<ID_COMPTE>:role/UdacityFlaskDeployCBKubectlRole
+      username: build
   ```
-  Ensure to create all your resources in a single region. 
-  * EKSCTL installed in your system. Follow the instructions [available here](https://docs.aws.amazon.com/eks/latest/userguide/eksctl.html#installing-eksctl) or <a href="https://eksctl.io/introduction/#installation" target="_blank">here</a> to download and install `eksctl` utility. 
-  * The KUBECTL installed in your system. Installation instructions for kubectl can be found <a href="https://kubernetes.io/docs/tasks/tools/install-kubectl/" target="_blank">here</a>. 
+replaces <ACCOUNT_ID> with your account ID.
 
-## Initial setup
+Update your cluster configuration map with the following command:
 
-1. Fork the <a href="https://github.com/udacity/cd0157-Server-Deployment-and-Containerization" target="_blank">Server and Deployment Containerization Github repo</a> to your Github account.
-1. Locally clone your forked version to begin working on the project.
+* Mac/Linux
 ```bash
-git clone https://github.com/SudKul/cd0157-Server-Deployment-and-Containerization.git
-cd cd0157-Server-Deployment-and-Containerization/
+  kubectl patch configmap/aws-auth -n kube-system --patch "$(cat /tmp/aws-auth-patch.yml)"
 ```
-1. These are the files relevant for the current project:
+* Windows
 ```bash
-.
-├── Dockerfile 
-├── README.md
-├── aws-auth-patch.yml #ToDo
-├── buildspec.yml      #ToDo
-├── ci-cd-codepipeline.cfn.yml #ToDo
-├── iam-role-policy.json  #ToDo
-├── main.py
-├── requirements.txt
-├── simple_jwt_api.yml
-├── test_main.py  #ToDo
-└── trust.json     #ToDo 
+  kubectl patch configmap/aws-auth -n kube-system --patch "$(cat aws-auth-patch.yml)"
+```
+The command above should show you "configmap/aws-auth patched" as a response.
+
+### Generate a Github access token
+Log in to your GitHub account to generate an access token that will allow CodePipeline to monitor changes.
+
+A token can be generated [here](https://github.com/settings/tokens/?target=_blank). You need to generate the token with full control of private repositories as shown in the image below. Be sure to save the token in a secure location.
+
+### Create a pipeline using the CloudFormation template
+
+Navigate to the project folder to find the file
+CloudFormation template "ci-cd-codepipeline.cfn.yml" and adapt configurations.
+
+The "ci-cd-codepipeline.cfn.yml" file is the template used to create the CodePipeline and CodeBuild pipeline.
+
+Modify the following values ​​in the file
+
+| Parameter | Field     | Possible value                       |
+| :-------- | :------- | :-------------------------------- |
+| `EksClusterName`      | `Default` | « simple-jwt-api » Name of the EKS cluster you created |
+| `GitSourceRepo`      | `Default` | « deployment-and-containerization » Github repository name |
+| `GitBranch`      | `Default` | « main » Name of the branch you want to link to the Pipeline |
+| `GitHubUser`      | `Default` | Your Github username |
+| `KubectlRoleName`      | `Default` | « UdacityFlaskDeployCBKubectlRole » We created this role earlier |
+
+Save the file. Go to the CloudFormation service in the AWS console. Press Create stack button and choose "ci-cd-codepipeline.cfn.yml" as model file.
+
+Before you finish, you enter your github token and other information.
+
+Finish creating the stack and wait for the stack to have the status "CREATE_COMPLETE".
+
+### Set a secret using AWS Parameter Store
+Add the following to the end of the buildspec.yml file (pay attention to indentation):
+```bash
+    env :
+       parameter-store :
+       JWT_SECRET : JWT_SECRET
 ```
 
-     
-## Project Steps
+Put the secret in AWS Parameter Store with the following command:
+```bash
+    aws ssm put-parameter --name JWT_SECRET --overwrite --value "YourSecretJWT" --type SecureString
+```
+To delete, run the following command:
+```bash
+    aws ssm delete-parameter --name JWT_SECRET
+```
+**Note**: In the buildspec.yml file, use the same KUBECTL version (or closer) that you used when creating an EKS cluster (run "kubectl version" in your local terminal).
 
-Completing the project involves several steps:
+* Now deploy your code to the GitHup repository
+* On the AWS console go to CodeBuild then start the compilation process by clicking on the "Start compilation" button in the CodeBuild dashboard.
 
-1. Write a Dockerfile for a simple Flask API
-2. Build and test the container locally
-3. Create an EKS cluster
-4. Store a secret using AWS Parameter Store
-5. Create a CodePipeline pipeline triggered by GitHub checkins
-6. Create a CodeBuild stage which will build, test, and deploy your code
+When a build fails, you can check the logs to see any errors that may have occurred.
 
-For more detail about each of these steps, see the project lesson.
+When the compilation works, type the following command to get the external IP address to test:
+```bash
+    kubectl get services simple-jwt-api -o wide
+```
+
+### Add tests to compilation
+Pre-deployment testing allows you to test the code before production.
+
+You can test with tests that pass and then with tests that do not pass to observe the compilation.
+
+1. The tests are in the test_main.py file, modify them.
+2. Open the buildspec.yml file.
+3. In the prebuild section, add the following lines:
+```bash
+    - pip3 install -r requirements.txt
+    - python -m pytest test_main.py
+```
+4. Save the file and push to Github.
+
+If your tests pass, then the application will be deployed. Otherwise the application will not be deployed.
+
+## Authors
+This project is the result of the work of the Udacity team and me.
+
+The base of the project was made by the Udacity team and I made corrections to make it work
+
+- [Udacity](https://www.udacity.com/)
+- [Bakary FOFANA](https://github.com/FOFANA12)
+
+## Acknowledgements
+
+ - [Udacity](https://www.udacity.com/) 
